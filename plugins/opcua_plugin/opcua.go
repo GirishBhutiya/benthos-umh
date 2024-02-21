@@ -37,34 +37,26 @@ import (
 )
 
 type NodeDef struct {
-	NodeID       *ua.NodeID
-	NodeClass    ua.NodeClass
-	BrowseName   string
-	Description  string
-	AccessLevel  ua.AccessLevelType
-	ParentNodeID string
-	Path         string
-	DataType     string
-	Writable     bool
-	Unit         string
-	Scale        string
-	Min          string
-	Max          string
+	NodeID      *ua.NodeID
+	NodeClass   ua.NodeClass
+	BrowseName  string
+	Description string
+	AccessLevel ua.AccessLevelType
+	Path        string
+	DataType    string
+	Writable    bool
+	Unit        string
+	Scale       string
+	Min         string
+	Max         string
 }
 
 func (n NodeDef) Records() []string {
 	return []string{n.BrowseName, n.DataType, n.NodeID.String(), n.Unit, n.Scale, n.Min, n.Max, strconv.FormatBool(n.Writable), n.Description}
 }
 
-func join(a, b string) string {
-	if a == "" {
-		return b
-	}
-	return a + "." + b
-}
-
-func browse(ctx context.Context, n *opcua.Node, path string, level int, logger *service.Logger, parentNodeId string) ([]NodeDef, error) {
-	logger.Debugf("node:%s path:%q level:%d parentNodeId:%s\n", n, path, level, parentNodeId)
+func browse(ctx context.Context, n *opcua.Node, path string, level int, logger *service.Logger) ([]NodeDef, error) {
+	logger.Debugf("node:%s path:%q level:%d\n", n, path, level)
 	if level > 10 {
 		return nil, nil
 	}
@@ -157,14 +149,13 @@ func browse(ctx context.Context, n *opcua.Node, path string, level int, logger *
 		return nil, err
 	}
 
+	def.Path = join(path, def.BrowseName)
 	logger.Debugf("%d: def.Path:%s def.NodeClass:%s\n", level, def.Path, def.NodeClass)
-	def.ParentNodeID = parentNodeId
 
 	var nodes []NodeDef
 	// If a node has a Variable class, it probably means that it is a tag
 	// Therefore, no need to browse further
 	if def.NodeClass == ua.NodeClassVariable {
-		def.Path = join(path, def.BrowseName)
 		nodes = append(nodes, def)
 		return nodes, nil
 	}
@@ -176,7 +167,7 @@ func browse(ctx context.Context, n *opcua.Node, path string, level int, logger *
 		}
 		logger.Debugf("found %d child refs\n", len(refs))
 		for _, rn := range refs {
-			children, err := browse(ctx, rn, def.Path, level+1, logger, parentNodeId)
+			children, err := browse(ctx, rn, def.Path, level+1, logger)
 			if err != nil {
 				return errors.Errorf("browse children: %s", err)
 			}
@@ -222,24 +213,6 @@ var OPCUAConfigSpec = service.NewConfigSpec().
 	Field(service.NewStringField("securityPolicy").Description("The security policy to use.  If not set, a reasonable security policy will be set depending on the discovered endpoints.").Default("")).
 	Field(service.NewBoolField("insecure").Description("Set to true to bypass secure connections, useful in case of SSL or certificate issues. Default is secure (false).").Default(false)).
 	Field(service.NewBoolField("subscribeEnabled").Description("Set to true to subscribe to OPC-UA nodes instead of fetching them every seconds. Default is pulling messages every second (false).").Default(false))
-
-func ParseNodeIDs(incomingNodes []string) []*ua.NodeID {
-
-	// Parse all nodeIDs to validate them.
-	// loop through all nodeIDs, parse them and put them into a slice
-	parsedNodeIDs := make([]*ua.NodeID, len(incomingNodes))
-
-	for _, id := range incomingNodes {
-		parsedNodeID, err := ua.ParseNodeID(id)
-		if err != nil {
-			return nil
-		}
-
-		parsedNodeIDs = append(parsedNodeIDs, parsedNodeID)
-	}
-
-	return parsedNodeIDs
-}
 
 func newOPCUAInput(conf *service.ParsedConfig, mgr *service.Resources) (service.BatchInput, error) {
 	endpoint, err := conf.FieldString("endpoint")
@@ -287,13 +260,43 @@ func newOPCUAInput(conf *service.ParsedConfig, mgr *service.Resources) (service.
 		return nil, errors.New("no nodeIDs provided")
 	}
 
-	parsedNodeIDs := ParseNodeIDs(nodeIDs)
+	//parsedNodeIDs := ParseNodeIDs(nodeIDs)
+	parsedNodeIDs := ParseTriggerNodeIDs(nodeIDs)
+
+	// tnodes group, sql procedures mapping
+	nodeGroupMapping := make(map[string]string)
+	nodesMapping := make(map[string]string)
+
+	for _, nodeElements := range nodeIDs {
+
+		var nodeObj map[string][]map[string]string
+		err := json.Unmarshal([]byte(nodeElements), &nodeObj)
+		if err != nil {
+			return nil, err
+		}
+
+		for key, values := range nodeObj {
+			for _, obj := range values {
+				nodeID := obj["node"]
+				group := obj["group"]
+				db := obj["db"]
+				historian := obj["historian"]
+				sqlSp := obj["sqlSp"]
+
+				nodeElement := fmt.Sprintf("%s,%s,%s,%s", group, db, historian, sqlSp)
+				nodeGroupMapping[nodeID] = nodeElement
+				nodesMapping[nodeID] = key
+			}
+		}
+	}
 
 	m := &OPCUAInput{
 		endpoint:         endpoint,
 		username:         username,
 		password:         password,
 		nodeIDs:          parsedNodeIDs,
+		nodesMapping:     nodesMapping,
+		nodeGroupMapping: nodeGroupMapping,
 		log:              mgr.Logger(),
 		securityMode:     securityMode,
 		securityPolicy:   securityPolicy,
@@ -305,7 +308,6 @@ func newOPCUAInput(conf *service.ParsedConfig, mgr *service.Resources) (service.
 }
 
 func init() {
-
 	err := service.RegisterBatchInput(
 		"opcua", OPCUAConfigSpec,
 		func(conf *service.ParsedConfig, mgr *service.Resources) (service.BatchInput, error) {
@@ -320,23 +322,24 @@ func init() {
 //------------------------------------------------------------------------------
 
 type OPCUAInput struct {
-	endpoint       string
-	username       string
-	password       string
-	nodeIDs        []*ua.NodeID
-	nodeList       []NodeDef
-	securityMode   string
-	securityPolicy string
-	insecure       bool
-	client         *opcua.Client
-	log            *service.Logger
+	endpoint         string
+	username         string
+	password         string
+	nodeIDs          []*ua.NodeID
+	nodesMapping     map[string]string
+	nodeList         []NodeDef
+	nodeGroupMapping map[string]string
+	securityMode     string
+	securityPolicy   string
+	insecure         bool
+	client           *opcua.Client
+	log              *service.Logger
 	// this is required for subscription
 	subscribeEnabled bool
 	subNotifyChan    chan *opcua.PublishNotificationData
 }
 
 func (g *OPCUAInput) Connect(ctx context.Context) error {
-
 	if g.client != nil {
 		return nil
 	}
@@ -351,7 +354,6 @@ func (g *OPCUAInput) Connect(ctx context.Context) error {
 	if err != nil {
 		g.log.Infof("GetEndpoints failed: %s", err)
 	}
-
 	// Step 2: Log details of each discovered endpoint for debugging.
 	for i, endpoint := range endpoints {
 		g.log.Infof("Endpoint %d:", i+1)
@@ -402,11 +404,13 @@ func (g *OPCUAInput) Connect(ctx context.Context) error {
 
 	// Step 3.1: Filter the endpoints based on the selected authentication method.
 	// This will eliminate endpoints that do not support the chosen method.
+
 	selectedEndpoint := g.getReasonableEndpoint(endpoints, selectedAuthentication, g.insecure, g.securityMode, g.securityPolicy)
 	if selectedEndpoint == nil {
 		g.log.Errorf("Could not select a suitable endpoint")
 		return err
 	}
+
 	if strings.HasPrefix(selectedEndpoint.EndpointURL, "opc.tcp://:") { // I omitted the port here, as it might change ?
 		selectedEndpoint.EndpointURL = g.endpoint
 	}
@@ -485,7 +489,7 @@ func (g *OPCUAInput) Connect(ctx context.Context) error {
 		g.log.Debugf("Browsing nodeID: %s", id.String())
 
 		// Browse the OPC-UA server's node tree and print the results.
-		nodes, err := browse(ctx, g.client.Node(id), "", 0, g.log, id.String())
+		nodes, err := browse(ctx, g.client.Node(id), "", 0, g.log)
 		if err != nil {
 			g.log.Errorf("Browsing failed: %s")
 			c.Close(ctx) // ensure that if something fails here, the connection is always safely closed
@@ -507,6 +511,11 @@ func (g *OPCUAInput) Connect(ctx context.Context) error {
 
 	g.nodeList = nodeList
 
+	if err := g.detectTriggerNodeIDs(ctx); err != nil {
+		g.log.Errorf("Error detecting trigger nodes: %s")
+		c.Close(ctx) // ensure that if something fails here, the connection is always safely closed
+		return err
+	}
 	// If subscription is enabled, start subscribing to the nodes
 	if g.subscribeEnabled {
 		g.log.Infof("Subscription is enabled, therefore start subscribing to the selected notes...")
@@ -564,7 +573,7 @@ func (g *OPCUAInput) Connect(ctx context.Context) error {
 
 // createMessageFromValue creates a benthos messages from a given variant and nodeID
 // theoretically nodeID can be extracted from variant, but not in all cases (e.g., when subscribing), so it it left to the calling function
-func (g *OPCUAInput) createMessageFromValue(variant *ua.Variant, nodeDef NodeDef) *service.Message {
+func (g *OPCUAInput) createMessageFromValue(variant *ua.Variant, node NodeDef, nodeID string, msgs map[string]string) *service.Message {
 	if variant == nil {
 		g.log.Errorf("Variant is nil")
 		return nil
@@ -612,28 +621,23 @@ func (g *OPCUAInput) createMessageFromValue(variant *ua.Variant, nodeDef NodeDef
 	}
 
 	if b == nil {
-		g.log.Errorf("Could not create benthos message as payload is empty for node %s: %v", nodeDef.NodeID.String(), b)
+		g.log.Errorf("Could not create benthos message as payload is empty for node %s: %v", nodeID, b)
 		return nil
 	}
 
 	message := service.NewMessage(b)
 
 	re := regexp.MustCompile(`[^a-zA-Z0-9_-]`)
-	opcuaPath := re.ReplaceAllString(nodeDef.NodeID.String(), "_")
+	opcuaPath := re.ReplaceAllString(nodeID, "_")
 	message.MetaSet("opcua_path", opcuaPath)
+	message.MetaSet("description", node.Description)
+	message.MetaSet("nodeID", nodeID)
 
-	opcuaTagPath := re.ReplaceAllString(nodeDef.Path, "_")
-	message.MetaSet("opcua_tag_path", opcuaTagPath)
-
-	parentPath := re.ReplaceAllString(nodeDef.ParentNodeID, "_")
-	message.MetaSet("opcua_parent_path", parentPath)
-
-	op, _ := message.MetaGet("opcua_path")
-	pp, _ := message.MetaGet("opcua_parent_path")
-	tp, _ := message.MetaGet("opcua_tag_path")
-	g.log.Debugf("Created message with opcua_path: %s", op)
-	g.log.Debugf("Created message with opcua_parent_path: %s", pp)
-	g.log.Debugf("Created message with opcua_tag_path: %s", tp)
+	nodeElements := strings.Split(g.nodeGroupMapping[nodeID], ",")
+	message.MetaSet("group", nodeElements[0])
+	message.MetaSet("db", nodeElements[1])
+	message.MetaSet("historian", nodeElements[2])
+	message.MetaSet("sqlSp", nodeElements[3])
 
 	return message
 }
@@ -712,7 +716,7 @@ func (g *OPCUAInput) ReadBatchPull(ctx context.Context) (service.MessageBatch, s
 			g.log.Errorf("Received nil from node: %s", node.NodeID.String())
 			continue
 		}
-		message := g.createMessageFromValue(value, node)
+		message := g.createMessageFromValue(value, node, node.NodeID.String(), nil)
 		if message != nil {
 			msgs = append(msgs, message)
 		}
@@ -748,7 +752,6 @@ func (g *OPCUAInput) ReadBatchSubscribe(ctx context.Context) (service.MessageBat
 
 		// Create a message with the node's path as the metadata
 		msgs := service.MessageBatch{}
-
 		switch x := res.Value.(type) {
 		case *ua.DataChangeNotification:
 			for _, item := range x.MonitoredItems {
@@ -756,13 +759,11 @@ func (g *OPCUAInput) ReadBatchSubscribe(ctx context.Context) (service.MessageBat
 					g.log.Errorf("Received nil in item structure")
 					continue
 				}
-
 				// now get the handle id, which is the position in g.Nodelist
 				// see also NewMonitoredItemCreateRequestWithDefaults call in other functions
 				handleID := item.ClientHandle
-
 				if uint32(len(g.nodeList)) >= handleID {
-					message := g.createMessageFromValue(item.Value.Value, g.nodeList[handleID])
+					message := g.createMessageFromValue(item.Value.Value, g.nodeList[handleID], g.nodeList[handleID].NodeID.String(), nil)
 					if message != nil {
 						msgs = append(msgs, message)
 					}
@@ -827,4 +828,39 @@ func (g *OPCUAInput) logCertificateInfo(certBytes []byte) {
 	g.log.Infof("    DNS Names:", cert.DNSNames)
 	g.log.Infof("    IP Addresses:", cert.IPAddresses)
 	g.log.Infof("    URIs:", cert.URIs)
+}
+func (g *OPCUAInput) detectTriggerNodeIDs(ctx context.Context) error {
+	// Create a slice to store the detected trigger nodes
+	nodeList := make([]NodeDef, 0)
+
+	// Print all trigger nodeIDs that are being browsed
+	for _, id := range g.nodeIDs {
+		if id == nil {
+			continue
+		}
+
+		// Print id
+		g.log.Infof("Browsing trigger nodeID: %s", id.String())
+
+		// Browse the OPC-UA server's node tree and print the results.
+		nodes, err := browse(ctx, g.client.Node(id), "", 0, g.log)
+		if err != nil {
+			g.log.Errorf("Browsing failed: %s")
+			return err
+		}
+
+		// Add the trigger nodes to the tNodeList
+		nodeList = append(nodeList, nodes...)
+	}
+
+	b, err := json.Marshal(nodeList)
+	if err != nil {
+		g.log.Errorf("Unmarshalling failed: %s")
+		return err
+	}
+
+	g.log.Infof("Detected Trigger nodes: %s", b)
+
+	g.nodeList = nodeList
+	return nil
 }

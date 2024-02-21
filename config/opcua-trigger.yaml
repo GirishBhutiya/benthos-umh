@@ -14,19 +14,25 @@
 
 ---
 input:
-  opcua:
+  opcuatrigger:
     endpoint: "opc.tcp://localhost:46010"
-    nodeIDs:
+    #nodeIDs: ["ns=2;s=Humidity", "ns=2;s=Air Quality"]
+    tNodeIDs:
       - '{"1": [{"node": "ns=2;s=Pressure", "group": "D001", "db": "mssql", "historian": "influx", "sqlSp": "sp_sql_logging"}]}'
       - '{"2": [{"node": "ns=2;s=Temperature", "group": "D002", "db": "mssql", "historian": "influx", "sqlSp": "sp_sql_logging"}]}'
     subscribeEnabled: true
     insecure: true
+    tBatchNodeIDs:
+      - '{"1": [{"node":"ns=2;s=Pressure", "name": "PressureNodeName"}, {"node": "ns=2;s=Humidity", "name": "HumidityNodeName"}]}'
+      - '{"2": [{"node":"ns=2;s=Temperature","name": "TemperatureNodeName"}, {"node": "ns=2;s=Air Quality", "name": "Air Qualit Node Name"}]}'
 
 pipeline:
   processors:
     - bloblang: |
+        root = meta("Message").parse_json()
         root.value = this
         root.timestamp_ms = (timestamp_unix_nano() / 1000000).floor()
+        root.trigger = meta("opcua_path")
         root.group = meta("group")
         root.db = meta("db")
         root.historian = meta("historian")
@@ -36,5 +42,5 @@ output:
   mqtt:
     urls:
       - 'localhost:1883'
-    topic: 'ia/raw/opcua/'
+    topic: 'ia/raw/opcuatrigger${! meta("opcua_path") }'
     client_id: benthos-umh

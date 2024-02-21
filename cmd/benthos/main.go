@@ -19,8 +19,8 @@ import (
 
 	_ "github.com/benthosdev/benthos/v4/public/components/all"
 	"github.com/benthosdev/benthos/v4/public/service"
-	_ "github.com/united-manufacturing-hub/benthos-umh/v2/opcua_plugin"
-	_ "github.com/united-manufacturing-hub/benthos-umh/v2/s7comm_plugin"
+	_ "github.com/united-manufacturing-hub/benthos-umh/v2/plugins/opcua_plugin"
+	_ "github.com/united-manufacturing-hub/benthos-umh/v2/plugins/s7comm_plugin"
 )
 
 func main() {
