@@ -22,7 +22,7 @@ RUN echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' \
  && apt-get install -y --no-install-recommends goreleaser \
  && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /go/src/github.com/united-manufacturing-hub/benthos-umh
+WORKDIR /go/src/github.com/GirishBhutiya/benthos-umh
 
 COPY go.mod go.sum ./
 RUN go mod download
@@ -42,7 +42,7 @@ WORKDIR /
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /etc/passwd /etc/passwd
-COPY --from=build /go/src/github.com/united-manufacturing-hub/benthos-umh/main benthos
+COPY --from=build /go/src/github.com/GirishBhutiya/main benthos
 COPY ./config/ ./config
 COPY ./templates /templates
 
@@ -55,4 +55,4 @@ EXPOSE 4195
 
 USER benthos
 
-LABEL org.opencontainers.image.source https://github.com/united-manufacturing-hub/benthos-umh
+LABEL org.opencontainers.image.source https://github.com/GirishBhutiya/benthos-umh
