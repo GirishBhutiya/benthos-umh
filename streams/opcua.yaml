@@ -26,3 +26,5 @@ output:
           urls:
             - 'tcp://localhost:1883'
           topic: 'ia/raw/opcuasimulator/${! meta("group") }'
+
+#exec [MES_DCM_OPC_Prod_Process_limits] @TagTimestamp = {(tagTimeStamp1)},@ShotCounter_PLC = {(ShotCounter_PLC)},@StartUp_Scrap_CycleCounter = {(StartUp_Scrap_CycleCounter)}

@@ -9,7 +9,8 @@ input:
     insecure: true
     tBatchNodeIDs:
       - '{"1": [{"node":"ns=2;s=Pressure", "name": "PressureNodeName"}, {"node": "ns=2;s=Humidity", "name": "HumidityNodeName"}]}'
-      - '{"2": [{"node":"ns=2;s=Temperature","name": "TemperatureNodeName"}, {"node": "ns=2;s=Air Quality", "name": "Air Qualit Node Name"}]}'
+      - '{"2": [{"node":"ns=2;s=Temperature","name": "TemperatureNodeName"}, {"node": "ns=2;s=Temperature", "name": "Temperature Node Name"}]}'
+
 pipeline:
   processors:
     - bloblang: |
@@ -21,6 +22,20 @@ pipeline:
         root.db = meta("db")
         root.historian = meta("historian")
         root.sqlSp = meta("sqlSp")
+        
+        let one = "%s%s= '%s'".format("@", "group", meta("group"))
+        let two = "%s%s= '%s'".format("@", "trigger", meta("opcua_path"))
+        let three = "%s%s= %s".format("@", "timestamp_ms", root.timestamp_ms.string())
+        let four = "%s%s= %s".format("@", "value", root.value)
+        let gmeta = "%s, %s, %s, %s".format($one,$two,$three,$four)
+
+        let query = meta("Message").replace_all("{","").replace_all("}","").split(",").map_each(item -> " %s%s".format("@",item)).string().replace_all("\"","").replace_all("\\","").replace_all("[","").replace_all("]","").replace_all(":","=")
+        root.query = "exec " + meta("sqlSp")+ " " + $query + ", " + $gmeta
+    - sql_raw:
+        driver: postgres
+        dsn: postgresql://opcua:password@localhost:5432/opcua?sslmode=disable
+        query: root.query
+        exec_only: true
 
 output:
   broker:

@@ -28,8 +28,10 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY ./cmd ./cmd
-COPY ./opcua_plugin ./opcua_plugin
-COPY ./s7comm_plugin ./s7comm_plugin
+COPY ./plugin ./plugin
+COPY ./streams ./streams
+COPY ./config ./config
+#COPY ./s7comm_plugin ./s7comm_plugin
 COPY .goreleaser.yml .
 RUN echo 'project_name: app' >> .goreleaser.yml
 RUN goreleaser build --single-target --snapshot --id benthos --output ./main
@@ -41,12 +43,13 @@ WORKDIR /
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /etc/passwd /etc/passwd
 COPY --from=build /go/src/github.com/united-manufacturing-hub/benthos-umh/main benthos
-COPY ./config/default.yaml /benthos.yaml
+COPY ./config/ ./config
 COPY ./templates /templates
 
 ENTRYPOINT ["/benthos"]
 
-CMD ["-c", "/benthos.yaml", "-t", "/templates/*.yaml"]
+#CMD ["-c", "/config/*.yaml", "-t", "/templates/*.yaml"]
+CMD ["streams", "/streams/*.yaml"]
 
 EXPOSE 4195
 
