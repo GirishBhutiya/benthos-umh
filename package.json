@@ -1,5 +1,5 @@
 {
-  "name": "united-manufacturing-hub/benthos-umh",
+  "name": "GirishBhutiya/benthos-umh",
   "version": "0.0.0",
   "description": "This is the benthos version maintained by the United Manufacturing Hub",
   "private": true,
@@ -10,9 +10,9 @@
   "keywords": [
     "benthos"
   ],
-  "homepage": "https://github.com/united-manufacturing-hub/benthos-umh",
-  "bugs": "https://github.com/united-manufacturing-hub/benthos-umh/issues",
-  "repository": "united-manufacturing-hub/benthos-umh",
+  "homepage": "https://github.com/GirishBhutiya/benthos-umh/benthos-umh",
+  "bugs": "https://github.com/GirishBhutiya/benthos-umh/benthos-umh/issues",
+  "repository": "GirishBhutiya/benthos-umh",
   "license": "MIT",
   "author": {
     "name": "UMH Systems GmbH",

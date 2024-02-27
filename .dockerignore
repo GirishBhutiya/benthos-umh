@@ -35,7 +35,7 @@ target
 .npmrc
 
 # Temporary development files
-tmp
+#tmp
 
 # Serverless Offline
 .serverless-offline

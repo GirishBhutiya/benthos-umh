@@ -8,6 +8,8 @@ require (
 	github.com/stretchr/testify v1.8.0
 )
 
+require github.com/danomagnum/gologix v0.22.1-beta // indirect
+
 require (
 	cloud.google.com/go v0.104.0 // indirect
 	cloud.google.com/go/bigquery v1.42.0 // indirect

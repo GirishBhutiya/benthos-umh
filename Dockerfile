@@ -28,12 +28,12 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY ./cmd ./cmd
-COPY ./plugin ./plugin
+COPY ./plugins ./plugins
 COPY ./streams ./streams
 COPY ./config ./config
 #COPY ./s7comm_plugin ./s7comm_plugin
-COPY .goreleaser.yml .
-RUN echo 'project_name: app' >> .goreleaser.yml
+COPY .goreleaser.yaml ./
+RUN echo 'project_name: app' >> .goreleaser.yaml
 RUN goreleaser build --single-target --snapshot --id benthos --output ./main
 
 FROM busybox as app
@@ -42,13 +42,14 @@ WORKDIR /
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /etc/passwd /etc/passwd
-COPY --from=build /go/src/github.com/GirishBhutiya/main benthos
+COPY --from=build /go/src/github.com/GirishBhutiya/benthos-umh/main benthos
 COPY ./config/ ./config
+COPY ./streams ./streams
 COPY ./templates /templates
 
 ENTRYPOINT ["/benthos"]
 
-#CMD ["-c", "/config/*.yaml", "-t", "/templates/*.yaml"]
+#CMD ["-c", "/config/opctrigger.yaml", "-t", "/templates/*.yaml"]
 CMD ["streams", "/streams/*.yaml"]
 
 EXPOSE 4195
