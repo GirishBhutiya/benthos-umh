@@ -97,7 +97,7 @@ func ParseTSubscription(tSubscriptions []string) []tSubscriptionsDef {
 		// Unmarshal the JSON string into the temporary map
 		err := json.Unmarshal([]byte(jsonString), &temp)
 		if err != nil {
-			log.Println(err)
+			//log.Println(err)
 			return parsedtSubscription
 		}
 		var tSubsc tSubscriptionsDef
@@ -112,7 +112,7 @@ func ParseTSubscription(tSubscriptions []string) []tSubscriptionsDef {
 				tsub.Name = obj["name"]
 				tsub.DataType = obj["datatype"]
 				if err != nil {
-					log.Println(err)
+					//log.Println(err)
 					return parsedtSubscription
 				}
 				subNodes = append(subNodes, tsub)
@@ -144,7 +144,7 @@ var ABCommInputCommConfigSpec = service.NewConfigSpec().
 // newS7CommInput is the constructor function for S7CommInput. It parses the plugin configuration,
 // establishes a connection with the S7 PLC, and initializes the input plugin instance.
 func newABCommInput(conf *service.ParsedConfig, mgr *service.Resources) (service.BatchInput, error) {
-	log.Println("Girish newABCommInput()")
+	//log.Println("Girish newABCommInput()")
 	tcpDevice, err := conf.FieldString("tcpDevice")
 	if err != nil {
 		return nil, err
@@ -164,12 +164,10 @@ func newABCommInput(conf *service.ParsedConfig, mgr *service.Resources) (service
 	if err != nil {
 		return nil, err
 	}
-	log.Println(tsubscriptions)
+	//log.Println(tsubscriptions)
 
 	sub := ParseSubscription(subscriptions)
-	for i, su := range sub {
-		log.Printf("Parsed Subscription %d and id : %d, and address: %s", i, su.ID, su.Address)
-	}
+
 	tSub := ParseTSubscription(tsubscriptions)
 
 	m := &ABCommInput{
@@ -186,7 +184,7 @@ func newABCommInput(conf *service.ParsedConfig, mgr *service.Resources) (service
 //------------------------------------------------------------------------------
 
 func init() {
-	log.Println("Girish init()")
+	//log.Println("Girish init()")
 	err := service.RegisterBatchInput(
 		"abtrigger", ABCommInputCommConfigSpec,
 		func(conf *service.ParsedConfig, mgr *service.Resources) (service.BatchInput, error) {
@@ -199,14 +197,14 @@ func init() {
 }
 
 func (g *ABCommInput) Connect(ctx context.Context) error {
-	log.Println("Girish Connect()")
+	//log.Println("Girish Connect()")
 	if g.client != nil {
 		return nil
 	}
 	client := gologix.NewClient(g.tcpDevice)
 	err := client.Connect()
 	if err != nil {
-		log.Printf("Error opening client. %v", err)
+		//log.Printf("Error opening client. %v", err)
 		return err
 	}
 	g.client = client
@@ -223,7 +221,7 @@ func (g *ABCommInput) ReadBatch(ctx context.Context) (service.MessageBatch, serv
 
 		value, err := g.client.Read_single(subs.Address, gologix.CIPTypeUnknown, 1)
 		if err != nil {
-			log.Printf("error reading %s: %v", subs.Address, err)
+			//log.Printf("error reading %s: %v", subs.Address, err)
 			return nil, func(ctx context.Context, err error) error {
 				return nil // Acknowledgment handling here if needed
 			}, err
@@ -242,11 +240,11 @@ func (g *ABCommInput) ReadBatch(ctx context.Context) (service.MessageBatch, serv
 		//log.Println("current str value:", g.subscription[i].Value, " New Value:", subs.Value, " Address:", subs.Address, "comparission:", !reflect.DeepEqual(g.subscription[i].Value, subs.Value))
 
 		if !reflect.DeepEqual(g.subscription[i].Value, subs.Value) {
-			log.Println("There is data change in address:", subs.Address)
+			//log.Println("There is data change in address:", subs.Address)
 			for _, tsubs := range g.tSubscription[i].tSub {
 				tvalue, err := g.client.Read_single(tsubs.Address, gologix.CIPTypeUnknown, 1)
 				if err != nil {
-					log.Printf("error reading %s: %v", subs.Address, err)
+					//log.Printf("error reading %s: %v", subs.Address, err)
 					return nil, func(ctx context.Context, err error) error {
 						return nil // Acknowledgment handling here if needed
 					}, err
@@ -261,7 +259,7 @@ func (g *ABCommInput) ReadBatch(ctx context.Context) (service.MessageBatch, serv
 					val = string(bytes.Trim(v, "\x00"))
 
 				}
-				log.Println("address:", tsubs.Address, " Value:", val, " original:", tvalue)
+				//log.Println("address:", tsubs.Address, " Value:", val, " original:", tvalue)
 				msg := g.createMessageFromValue(subs, strings.TrimSpace(val), tsubs.Address, tsubs.Name)
 				msgs = append(msgs, msg)
 			}
@@ -276,7 +274,7 @@ func (g *ABCommInput) ReadBatch(ctx context.Context) (service.MessageBatch, serv
 }
 
 func (g *ABCommInput) Close(ctx context.Context) error {
-	log.Println("Girish Close()")
+	//log.Println("Girish Close()")
 	if g.client != nil {
 		g.client.Disconnect()
 	}
@@ -287,7 +285,7 @@ func (g *ABCommInput) Close(ctx context.Context) error {
 // theoretically nodeID can be extracted from variant, but not in all cases (e.g., when subscribing), so it it left to the calling function
 func (g *ABCommInput) createMessageFromValue(subscriptionDef subscriptionDef, tagValue, tagName, name string) *service.Message {
 
-	log.Println("value is:", cleanString(tagValue), "L")
+	//log.Println("value is:", cleanString(tagValue), "L")
 	message := service.NewMessage(nil)
 	message.MetaSet("value", cleanString(tagValue))
 	message.MetaSet("tag_name", tagName)

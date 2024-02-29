@@ -1,7 +1,6 @@
 package ab_plugin
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -90,7 +89,7 @@ var ABCommSubInputCommConfigSpec = service.NewConfigSpec().
 // newS7CommInput is the constructor function for S7CommInput. It parses the plugin configuration,
 // establishes a connection with the S7 PLC, and initializes the input plugin instance.
 func newABCommSubInput(conf *service.ParsedConfig, mgr *service.Resources) (service.BatchInput, error) {
-	log.Println("Girish newABCommInput()")
+
 	tcpDevice, err := conf.FieldString("tcpDevice")
 	if err != nil {
 		return nil, err
@@ -107,9 +106,6 @@ func newABCommSubInput(conf *service.ParsedConfig, mgr *service.Resources) (serv
 	}
 
 	sub := ParseSubscriptionDef(subscriptions)
-	for i, su := range sub {
-		log.Printf("Parsed Subscription %d and id : %d, and address: %s", i, su.ID, su.Address)
-	}
 
 	m := &ABCommInputSub{
 		tcpDevice:    tcpDevice,
@@ -124,7 +120,7 @@ func newABCommSubInput(conf *service.ParsedConfig, mgr *service.Resources) (serv
 //------------------------------------------------------------------------------
 
 func init() {
-	log.Println("Girish init()")
+
 	err := service.RegisterBatchInput(
 		"absubscription", ABCommSubInputCommConfigSpec,
 		func(conf *service.ParsedConfig, mgr *service.Resources) (service.BatchInput, error) {
@@ -137,14 +133,14 @@ func init() {
 }
 
 func (g *ABCommInputSub) Connect(ctx context.Context) error {
-	log.Println("Girish Connect()")
+
 	if g.client != nil {
 		return nil
 	}
 	client := gologix.NewClient(g.tcpDevice)
 	err := client.Connect()
 	if err != nil {
-		log.Printf("Error opening client. %v", err)
+		//log.Printf("Error opening client. %v", err)
 		return err
 	}
 	g.client = client
@@ -161,7 +157,7 @@ func (g *ABCommInputSub) ReadBatch(ctx context.Context) (service.MessageBatch, s
 
 		value, err := g.client.Read_single(subs.Address, gologix.CIPTypeUnknown, 1)
 		if err != nil {
-			log.Printf("error reading %s: %v", subs.Address, err)
+			//log.Printf("error reading %s: %v", subs.Address, err)
 			return nil, func(ctx context.Context, err error) error {
 				return nil // Acknowledgment handling here if needed
 			}, err
@@ -180,20 +176,18 @@ func (g *ABCommInputSub) ReadBatch(ctx context.Context) (service.MessageBatch, s
 		//log.Println("current str value:", g.subscription[i].Value, " New Value:", subs.Value, " Address:", subs.Address, "comparission:", !reflect.DeepEqual(g.subscription[i].Value, subs.Value))
 
 		if !reflect.DeepEqual(g.subscription[i].Value, subs.Value) {
-			log.Println("There is data change in address:", subs.Address)
-
-			log.Println("address:", subs.Address, " Value:", value, " original:", subs.Value)
-			val := fmt.Sprint(subs.Value)
 
 			if subs.DataType == "str" {
-				v, ok := subs.Value.([]byte)
+				v, ok := value.([]byte)
 				if !ok {
 					log.Println("Can not convert to byte")
 				}
-				val = string(bytes.Trim(v, "\x00"))
+				subs.Value = string(v)
 
+			} else {
+				subs.Value = value
 			}
-			log.Println("address:", subs.Address, " Value:", val, " original:", subs.Value)
+			val := fmt.Sprint(subs.Value)
 			msg := g.createMessageFromValue(subs, strings.TrimSpace(val))
 			msgs = append(msgs, msg)
 			g.subscription[i] = subs
@@ -207,7 +201,7 @@ func (g *ABCommInputSub) ReadBatch(ctx context.Context) (service.MessageBatch, s
 }
 
 func (g *ABCommInputSub) Close(ctx context.Context) error {
-	log.Println("Girish Close()")
+
 	if g.client != nil {
 		g.client.Disconnect()
 	}
