@@ -34,7 +34,7 @@ COPY ./config ./config
 #COPY ./s7comm_plugin ./s7comm_plugin
 COPY .goreleaser.yaml ./
 RUN echo 'project_name: app' >> .goreleaser.yaml
-RUN goreleaser build --single-target --snapshot --id benthos --output ./main
+RUN goreleaser build --single-target --snapshot --rm-dist --id benthos --output ./main
 
 FROM busybox as app
 

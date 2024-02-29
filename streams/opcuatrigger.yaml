@@ -1,6 +1,6 @@
 input:
   opcuatrigger:
-    endpoint: "opc.tcp://172.29.0.6:46010"
+    endpoint: "opc.tcp://172.29.0.4:46010"
     #nodeIDs: ["ns=2;s=Humidity", "ns=2;s=Air Quality"]
     tNodeIDs:
       - '{"1": [{"node": "ns=2;s=Pressure", "group": "D001", "db": "mssql", "historian": "influx", "sqlSp": "sp_sql_logging"}]}'

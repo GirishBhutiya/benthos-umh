@@ -5,10 +5,20 @@ go 1.21
 require (
 	github.com/benthosdev/benthos/v4 v4.7.0
 	github.com/gopcua/opcua v0.5.2
+	github.com/influxdata/influxdb-client-go v1.4.0
 	github.com/stretchr/testify v1.8.0
 )
 
-require github.com/danomagnum/gologix v0.22.1-beta // indirect
+require (
+	github.com/danomagnum/gologix v0.22.1-beta
+	github.com/deepmap/oapi-codegen v1.3.6 // indirect
+	github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839 // indirect
+	github.com/labstack/echo/v4 v4.1.11 // indirect
+	github.com/labstack/gommon v0.3.0 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasttemplate v1.1.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+)
 
 require (
 	cloud.google.com/go v0.104.0 // indirect
