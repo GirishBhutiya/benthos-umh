@@ -220,6 +220,7 @@ func (g *ABCommInputSub) createMessageFromValue(subscriptionD subscriptionD, tag
 	message.MetaSet("db", subscriptionD.DB)
 	message.MetaSet("historian", subscriptionD.Historian)
 	message.MetaSet("sqlSp", subscriptionD.SqlSp)
+	message.MetaSet("datatype", subscriptionD.DataType)
 
 	return message
 

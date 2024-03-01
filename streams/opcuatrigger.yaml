@@ -42,4 +42,4 @@ output:
       - mqtt:
           urls:
             - 'tcp://mqtt:1883'
-          topic: 'ia/raw/opcuasimulator/${! meta("opcua_path") }'
+          topic: 'ia/raw/opcuatrigger/${! meta("opcua_path") }'

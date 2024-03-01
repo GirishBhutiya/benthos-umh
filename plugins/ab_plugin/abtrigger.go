@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/benthosdev/benthos/v4/public/service"
@@ -49,6 +48,7 @@ type tSubscription struct {
 	Name     string
 	Address  string
 	DataType string
+	Value    string
 }
 
 func ParseSubscription(subscription []string) []subscriptionDef {
@@ -227,20 +227,22 @@ func (g *ABCommInput) ReadBatch(ctx context.Context) (service.MessageBatch, serv
 			}, err
 		}
 
-		if subs.DataType == "str" {
+		/* if subs.DataType == "str" {
 			v, ok := value.([]byte)
 			if !ok {
-				log.Println("Can not convert to byte")
+				log.Println("Can not convert to byte1 ", value)
 			}
 			subs.Value = string(v)
 
 		} else {
 			subs.Value = value
-		}
+		} */
+		subs.Value = value
 		//log.Println("current str value:", g.subscription[i].Value, " New Value:", subs.Value, " Address:", subs.Address, "comparission:", !reflect.DeepEqual(g.subscription[i].Value, subs.Value))
 
 		if !reflect.DeepEqual(g.subscription[i].Value, subs.Value) {
 			//log.Println("There is data change in address:", subs.Address)
+			msgsV := make(map[string]string, 0)
 			for _, tsubs := range g.tSubscription[i].tSub {
 				tvalue, err := g.client.Read_single(tsubs.Address, gologix.CIPTypeUnknown, 1)
 				if err != nil {
@@ -249,20 +251,21 @@ func (g *ABCommInput) ReadBatch(ctx context.Context) (service.MessageBatch, serv
 						return nil // Acknowledgment handling here if needed
 					}, err
 				}
-				val := fmt.Sprint(tvalue)
+				tsubs.Value = fmt.Sprint(tvalue)
 
-				if tsubs.DataType == "str" {
+				if tsubs.DataType == "string" {
 					v, ok := tvalue.([]byte)
 					if !ok {
-						log.Println("Can not convert to byte")
+						g.log.Errorf("Can not convert to byte2")
 					}
-					val = string(bytes.Trim(v, "\x00"))
-
+					msgsV[tsubs.Name] = string(bytes.Trim(v, "\t\u0000"))
+				} else {
+					msgsV[tsubs.Name] = fmt.Sprint(tvalue)
 				}
 				//log.Println("address:", tsubs.Address, " Value:", val, " original:", tvalue)
-				msg := g.createMessageFromValue(subs, strings.TrimSpace(val), tsubs.Address, tsubs.Name)
-				msgs = append(msgs, msg)
 			}
+			msg := g.createMessageFromValue(subs, msgsV)
+			msgs = append(msgs, msg)
 			g.subscription[i] = subs
 		}
 
@@ -283,25 +286,62 @@ func (g *ABCommInput) Close(ctx context.Context) error {
 
 // createMessageFromValue creates a benthos messages from a given variant and nodeID
 // theoretically nodeID can be extracted from variant, but not in all cases (e.g., when subscribing), so it it left to the calling function
-func (g *ABCommInput) createMessageFromValue(subscriptionDef subscriptionDef, tagValue, tagName, name string) *service.Message {
-
-	//log.Println("value is:", cleanString(tagValue), "L")
+func (g *ABCommInput) createMessageFromValue(subscriptionDef subscriptionDef, messageJ map[string]string) *service.Message {
+	re := regexp.MustCompile(`[^a-zA-Z0-9_-]`)
+	if subscriptionDef.Value == nil {
+		g.log.Errorf("Value is nil")
+		return nil
+	}
 	message := service.NewMessage(nil)
-	message.MetaSet("value", cleanString(tagValue))
-	message.MetaSet("tag_name", tagName)
-	message.MetaSet("name", name)
+
+	if subscriptionDef.DataType == "string" {
+		v, ok := subscriptionDef.Value.([]byte)
+		if !ok {
+			log.Println("Can not convert to byte2")
+		}
+		value := string(bytes.Trim(v, "\t\u0000"))
+		message.MetaSet("value", value)
+	} else {
+		message.MetaSet("value", fmt.Sprint(subscriptionDef.Value))
+	}
+
+	//message.MetaSet("tag_name", tagName)
+	message.MetaSet("name", subscriptionDef.Address)
 	message.MetaSet("group", subscriptionDef.Group)
 	message.MetaSet("db", subscriptionDef.DB)
 	message.MetaSet("historian", subscriptionDef.Historian)
 	message.MetaSet("sqlSp", subscriptionDef.SqlSp)
+	message.MetaSet("trigger", subscriptionDef.Address)
+	newAddress := make(map[string]string)
+	for address, val := range messageJ {
+		addressName := re.ReplaceAllString(address, "_")
+		newAddress[addressName] = val
+	}
 
-	message.SetStructured(g.tSubscription)
+	jsonMsg, err := json.Marshal(newAddress)
+	if err != nil {
+		g.log.Errorf("Could not change benthos message to json object")
+		return nil
+	}
+	message.MetaSet("Message", string(jsonMsg))
+
+	/* if subscriptionDef.DataType == "str" {
+		v, ok := subscriptionDef.Value.([]byte)
+		if !ok {
+			log.Println("Can not convert to byte1 ", subscriptionDef.Value)
+		}
+		message.MetaSet("value", string(v))
+	} else {
+		message.MetaSet("value", fmt.Sprintf("%s", subscriptionDef.Value))
+	} */
+
 	return message
 
 }
-func cleanString(str string) string {
+
+/* func cleanString(str any) string {
 	re := regexp.MustCompile("[\a\x00 ]+") //split according to \s, \t, \r, \t and whitespace. Edit this regex for other 'conditions'
 
-	split := re.ReplaceAllLiteralString(str, "")
+	split := re.ReplaceAllLiteralString(str.(string), "")
 	return split
-}
+} */

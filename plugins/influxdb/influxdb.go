@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"strconv"
 	"time"
 
@@ -111,6 +112,10 @@ func (i *InfluxDBOutput) Write(ctx context.Context, msg *service.Message) error 
 	if group != nil {
 		tags["group"] = group.(string)
 	}
+	datatype := currMsg["datatype"]
+	if datatype != nil {
+		tags["datatype"] = datatype.(string)
+	}
 
 	for key, val := range currMsg {
 
@@ -121,6 +126,16 @@ func (i *InfluxDBOutput) Write(ctx context.Context, msg *service.Message) error 
 		if floatValue, ok := val.(float64); ok {
 			fields[key] = floatValue
 		} else {
+			boolValue, err := strconv.ParseBool(val.(string))
+			if err == nil {
+
+				if boolValue {
+					fields[key] = 1
+				} else {
+					fields[key] = 0
+				}
+				log.Println("key:", key, " value:", fields[key], " datatype:", tags["datatype"], " booltype:", boolValue)
+			}
 			floatValue, err := strconv.ParseFloat(val.(string), 64)
 			if err != nil {
 				continue
