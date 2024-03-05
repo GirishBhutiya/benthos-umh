@@ -32,6 +32,7 @@ type ABCommInputSub struct {
 type subscriptionD struct {
 	ID        int
 	Address   string
+	Name      string
 	Group     string
 	DB        string
 	Historian string
@@ -53,20 +54,15 @@ func ParseSubscriptionDef(subscription []string) []subscriptionD {
 		//log.Println("Girish ParseSubscription() json tagname: ", subscr)
 		for key, values := range subscr {
 			for _, obj := range values {
-				address := obj["address"]
-				group := obj["group"]
-				db := obj["db"]
-				historian := obj["historian"]
-				sqlSp := obj["sqlSp"]
-				datatype := obj["datatype"]
 
 				subsc.ID, _ = strconv.Atoi(key)
-				subsc.Address = address
-				subsc.Group = group
-				subsc.DB = db
-				subsc.Historian = historian
-				subsc.SqlSp = sqlSp
-				subsc.DataType = datatype
+				subsc.Address = obj["address"]
+				subsc.Group = obj["group"]
+				subsc.DB = obj["db"]
+				subsc.Historian = obj["historian"]
+				subsc.SqlSp = obj["sqlSp"]
+				subsc.DataType = obj["datatype"]
+				subsc.Name = obj["name"]
 
 			}
 		}
@@ -221,12 +217,20 @@ func (g *ABCommInputSub) createMessageFromValue(subscriptionD subscriptionD, tag
 	message.MetaSet("historian", subscriptionD.Historian)
 	message.MetaSet("sqlSp", subscriptionD.SqlSp)
 	message.MetaSet("datatype", subscriptionD.DataType)
+	trigMap := make(map[string]string)
+	trigMap[subscriptionD.Name] = cleanSubString(tagValue)
+	jsonMsg, err := json.Marshal(trigMap)
+	if err != nil {
+		g.log.Errorf("Could not change benthos message to json object")
+		return nil
+	}
+	message.MetaSet("Message", string(jsonMsg))
 
 	return message
 
 }
 func cleanSubString(str string) string {
-	re := regexp.MustCompile("[\a\x00 ]+") //split according to \s, \t, \r, \t and whitespace. Edit this regex for other 'conditions'
+	re := regexp.MustCompile("[\b\a\x00 ]+") //split according to \s, \t, \r, \t and whitespace. Edit this regex for other 'conditions'
 
 	split := re.ReplaceAllLiteralString(str, "")
 	return split

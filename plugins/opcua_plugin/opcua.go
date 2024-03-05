@@ -39,6 +39,7 @@ import (
 type NodeDef struct {
 	NodeID      *ua.NodeID
 	NodeClass   ua.NodeClass
+	Name        string
 	BrowseName  string
 	Description string
 	AccessLevel ua.AccessLevelType
@@ -282,8 +283,9 @@ func newOPCUAInput(conf *service.ParsedConfig, mgr *service.Resources) (service.
 				db := obj["db"]
 				historian := obj["historian"]
 				sqlSp := obj["sqlSp"]
+				name := obj["name"]
 
-				nodeElement := fmt.Sprintf("%s,%s,%s,%s", group, db, historian, sqlSp)
+				nodeElement := fmt.Sprintf("%s,%s,%s,%s,%s", group, db, historian, sqlSp, name)
 				nodeGroupMapping[nodeID] = nodeElement
 				nodesMapping[nodeID] = key
 			}
@@ -624,11 +626,13 @@ func (g *OPCUAInput) createMessageFromValue(variant *ua.Variant, node NodeDef, n
 		g.log.Errorf("Could not create benthos message as payload is empty for node %s: %v", nodeID, b)
 		return nil
 	}
+	trigMap := make(map[string]string)
 
 	message := service.NewMessage(b)
 
 	re := regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 	opcuaPath := re.ReplaceAllString(nodeID, "_")
+
 	message.MetaSet("opcua_path", opcuaPath)
 	message.MetaSet("description", node.Description)
 	message.MetaSet("nodeID", nodeID)
@@ -638,6 +642,13 @@ func (g *OPCUAInput) createMessageFromValue(variant *ua.Variant, node NodeDef, n
 	message.MetaSet("db", nodeElements[1])
 	message.MetaSet("historian", nodeElements[2])
 	message.MetaSet("sqlSp", nodeElements[3])
+	trigMap[nodeElements[4]] = string(b)
+	jsonMsg, err := json.Marshal(trigMap)
+	if err != nil {
+		g.log.Errorf("Could not change benthos message to json object")
+		return nil
+	}
+	message.MetaSet("Message", string(jsonMsg))
 
 	return message
 }

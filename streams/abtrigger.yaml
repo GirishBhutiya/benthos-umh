@@ -19,6 +19,11 @@ pipeline:
         root.db = meta("db")
         root.historian = meta("historian")
         root.sqlSp = meta("sqlSp")
+        root.value = if meta("datatype") != "string" {
+          root.value.number()
+        } else {
+          root.value.string()
+        }
 
 output:
   broker:

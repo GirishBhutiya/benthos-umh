@@ -1,15 +1,15 @@
 input:
   opcua:
-    endpoint: "opc.tcp://172.29.0.6:46010"
+    endpoint: "opc.tcp://172.29.0.2:46010"
     nodeIDs:
-      - '{"1": [{"node": "ns=2;s=Pressure", "group": "D001", "db": "mssql", "historian": "influx", "sqlSp": "sp_sql_logging"}]}'
-      - '{"2": [{"node": "ns=2;s=Temperature", "group": "D002", "db": "mssql", "historian": "influx", "sqlSp": "sp_sql_logging"}]}'
+      - '{"1": [{"node": "ns=2;s=Pressure", "name":"Pressure", "group": "D001", "db": "mssql", "historian": "influx", "sqlSp": "sp_sql_logging"}]}'
+      - '{"2": [{"node": "ns=2;s=Temperature", "name":"Temperature", "group": "D002", "db": "mssql", "historian": "influx", "sqlSp": "sp_sql_logging"}]}'
     subscribeEnabled: true
     insecure: true
 pipeline:
   processors:
     - bloblang: |
-        root.value = this
+        root = meta("Message").parse_json()
         root.timestamp_ms = (timestamp_unix_nano() / 1000000).floor()
         root.group = meta("group")
         root.db = meta("db")
@@ -25,6 +25,6 @@ output:
       - mqtt:
           urls:
             - 'tcp://mqtt:1883'
-          topic: 'ia/raw/opcua/${! meta("group") }'
+          topic: 'ia/raw/opcua/${! meta("opcua_path") }'
 
 #exec [MES_DCM_OPC_Prod_Process_limits] @TagTimestamp = {(tagTimeStamp1)},@ShotCounter_PLC = {(ShotCounter_PLC)},@StartUp_Scrap_CycleCounter = {(StartUp_Scrap_CycleCounter)}

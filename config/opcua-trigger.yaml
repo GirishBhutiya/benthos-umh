@@ -42,5 +42,5 @@ output:
   mqtt:
     urls:
       - 'localhost:1883'
-    topic: 'ia/raw/opcuatrigger${! meta("opcua_path") }'
+    topic: 'ia/raw/opcuatrigger/${! meta("opcua_path") }'
     client_id: benthos-umh

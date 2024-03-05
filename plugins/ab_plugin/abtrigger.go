@@ -324,6 +324,7 @@ func (g *ABCommInput) createMessageFromValue(subscriptionDef subscriptionDef, me
 		return nil
 	}
 	message.MetaSet("Message", string(jsonMsg))
+	message.MetaSet("datatype", subscriptionDef.DataType)
 
 	/* if subscriptionDef.DataType == "str" {
 		v, ok := subscriptionDef.Value.([]byte)

@@ -19,11 +19,16 @@ pipeline:
         root.db = meta("db")
         root.historian = meta("historian")
         root.sqlSp = meta("sqlSp")
+        root.value = if meta("datatype") != "string" {
+          root.value.number()
+        } else {
+          root.value.string()
+        }
         
 
 output:
   mqtt:
     urls:
       - 'localhost:1883'
-    topic: 'ia/raw/abtrigger/${! meta("group") }'
+    topic: 'ia/raw/abtrigger/${! meta("trigger") }'
     client_id: benthos-umh
