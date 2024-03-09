@@ -16,8 +16,6 @@ pipeline:
         root.historian = meta("historian")
         root.sqlSp = meta("sqlSp")
         root.timestamp_ms = (timestamp_unix_nano() / 1000000).floor()
-        
-
 output:
   mqtt:
     urls:

@@ -1,6 +1,6 @@
 input:
   opcua:
-    endpoint: "opc.tcp://172.29.0.2:46010"
+    endpoint: "opc.tcp://172.29.0.4:46010"
     nodeIDs:
       - '{"1": [{"node": "ns=2;s=Pressure", "name":"Pressure", "group": "D001", "db": "mssql", "historian": "influx", "sqlSp": "sp_sql_logging"}]}'
       - '{"2": [{"node": "ns=2;s=Temperature", "name":"Temperature", "group": "D002", "db": "mssql", "historian": "influx", "sqlSp": "sp_sql_logging"}]}'

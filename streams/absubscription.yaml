@@ -27,5 +27,6 @@ output:
           key: 'trigger' 
       - mqtt:
           urls:
-            - 'tcp://mqtt:1883'
+            - 'localhost:1883'
           topic: 'ia/raw/absubscription/${! meta("tag_name") }'
+          client_id: benthos-umh

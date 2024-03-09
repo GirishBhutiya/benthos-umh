@@ -6,8 +6,10 @@ require (
 	github.com/benthosdev/benthos/v4 v4.7.0
 	github.com/gopcua/opcua v0.5.2
 	github.com/influxdata/influxdb-client-go v1.4.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.3
 )
+
+require github.com/jlaffaye/ftp v0.2.0
 
 require (
 	github.com/danomagnum/gologix v0.22.1-beta
@@ -124,7 +126,7 @@ require (
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
-	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-hclog v1.3.1 // indirect
 	github.com/hashicorp/go-msgpack v1.1.5 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
