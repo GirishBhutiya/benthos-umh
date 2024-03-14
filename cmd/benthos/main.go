@@ -22,6 +22,7 @@ import (
 	_ "github.com/united-manufacturing-hub/benthos-umh/v2/plugins/ab_plugin"
 	_ "github.com/united-manufacturing-hub/benthos-umh/v2/plugins/csv_plugin"
 	_ "github.com/united-manufacturing-hub/benthos-umh/v2/plugins/influxdb"
+	_ "github.com/united-manufacturing-hub/benthos-umh/v2/plugins/modbus_plugin"
 	_ "github.com/united-manufacturing-hub/benthos-umh/v2/plugins/opcua_plugin"
 	_ "github.com/united-manufacturing-hub/benthos-umh/v2/plugins/s7comm_plugin"
 )

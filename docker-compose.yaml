@@ -27,6 +27,7 @@ services:
     image: nodered/node-red
     ports:
       - "1880:1880"
+      - "10502:10502"
     links:
       - redis
     networks:
@@ -67,6 +68,7 @@ networks:
           driver: default
           config:
               - subnet: "172.29.0.0/16"
+
  
  
  

@@ -165,7 +165,9 @@ func newABCommInput(conf *service.ParsedConfig, mgr *service.Resources) (service
 		return nil, err
 	}
 	//log.Println(tsubscriptions)
-
+	if len(tsubscriptions) != len(subscriptions) {
+		return nil, errors.New("subscription and tsubscription fields must be the same length")
+	}
 	sub := ParseSubscription(subscriptions)
 
 	tSub := ParseTSubscription(tsubscriptions)

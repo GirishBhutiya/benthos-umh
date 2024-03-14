@@ -9,7 +9,12 @@ require (
 	github.com/stretchr/testify v1.8.3
 )
 
-require github.com/jlaffaye/ftp v0.2.0
+require (
+	github.com/goburrow/modbus v0.1.0
+	github.com/jlaffaye/ftp v0.2.0
+)
+
+require github.com/goburrow/serial v0.1.0 // indirect
 
 require (
 	github.com/danomagnum/gologix v0.22.1-beta
